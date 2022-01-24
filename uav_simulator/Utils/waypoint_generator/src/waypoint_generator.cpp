@@ -173,6 +173,7 @@ void goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
         if (msg->pose.position.z > -0.1) {
             // if height > 0, it's a valid goal;
             geometry_msgs::PoseStamped pt = *msg;
+            pt.pose.position.z = 2;
             waypoints.poses.clear();
             waypoints.poses.push_back(pt);
             publish_waypoints_vis();

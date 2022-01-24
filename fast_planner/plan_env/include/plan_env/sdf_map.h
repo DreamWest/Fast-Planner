@@ -23,6 +23,7 @@
 #include <message_filters/time_synchronizer.h>
 
 #include <plan_env/raycast.h>
+#include <plan_env/fishEyeCamera.h>
 
 #define logit(x) (log((x) / (1 - (x))))
 
@@ -206,6 +207,7 @@ public:
 private:
   MappingParameters mp_;
   MappingData md_;
+  fast_planner::FishEyeCamera fisheye_cam_;
 
   template <typename F_get_val, typename F_set_val>
   void fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim);
@@ -228,6 +230,8 @@ private:
   void projectDepthImage();
   void raycastProcess();
   void clearAndInflateLocalMap();
+
+  void projectFisheyeCamDepthImage();
 
   inline void inflatePoint(const Eigen::Vector3i& pt, int step, vector<Eigen::Vector3i>& pts);
   int setCacheOccupancy(Eigen::Vector3d pos, int occ);

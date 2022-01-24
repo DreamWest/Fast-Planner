@@ -51,6 +51,9 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
   node_.param("sdf_map/local_map_margin", mp_.local_map_margin_, 1);
   node_.param("sdf_map/ground_height", mp_.ground_height_, 1.0);
 
+  // initialize fisheye camera matrix
+  fisheye_cam_ = fast_planner::FishEyeCamera(node_);
+
   mp_.local_bound_inflate_ = max(mp_.resolution_, mp_.local_bound_inflate_);
   mp_.resolution_inv_ = 1 / mp_.resolution_;
   mp_.map_origin_ = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, mp_.ground_height_);
@@ -98,7 +101,15 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
   md_.tmp_buffer2_ = vector<double>(buffer_size, 0);
   md_.raycast_num_ = 0;
 
-  md_.proj_points_.resize(640 * 480 / mp_.skip_pixel_ / mp_.skip_pixel_);
+  if (mp_.use_depth_filter_)
+  {
+    md_.proj_points_.resize(1440 * 1080 * fisheye_cam_.getScale() / mp_.skip_pixel_ / mp_.skip_pixel_);
+  }
+  else
+  {
+    md_.proj_points_.resize(1440 * 1080 * fisheye_cam_.getScale());
+  }
+  
   md_.proj_points_cnt = 0;
 
   /* init callback */
@@ -341,6 +352,62 @@ int SDFMap::setCacheOccupancy(Eigen::Vector3d pos, int occ) {
   if (occ == 1) md_.count_hit_[idx_ctns] += 1;
 
   return idx_ctns;
+}
+
+
+void SDFMap::projectFisheyeCamDepthImage()
+{
+  md_.proj_points_cnt = 0; // num of points for projection back to world
+
+  uint16_t* row_ptr;
+  uchar* mask_ptr;
+  int cols = md_.depth_image_.cols;
+  int rows = md_.depth_image_.rows;
+  
+  double depth;
+
+  cv::Mat mask = fisheye_cam_.getMask(); // get mask for fisheye camera
+
+  Eigen::Matrix3d camera_r = md_.camera_q_.toRotationMatrix();
+
+  Eigen::Vector3d cur_pt, pt_world;
+
+  const double inv_factor = 1./mp_.k_depth_scaling_factor_;
+
+  if (!mp_.use_depth_filter_)
+  {
+    for (int v = 0; v < rows; v++)
+    {
+      row_ptr = md_.depth_image_.ptr<uint16_t>(v);
+      mask_ptr = mask.ptr<uchar>(v);
+      for (int u = 0; u < cols; u++)
+      {
+        if (mask_ptr[u] == 0)
+        continue;
+        depth = row_ptr[u]*inv_factor;
+        cur_pt = fisheye_cam_.unprojectPoint(node_, u, v, depth); // unproject to camera frame
+        pt_world = camera_r*cur_pt+md_.camera_pos_;
+        md_.proj_points_[md_.proj_points_cnt++] = pt_world;
+      }
+    }
+  }
+  else
+  {
+    for (int v = mp_.depth_filter_margin_; v < rows-mp_.depth_filter_margin_; v += mp_.skip_pixel_)
+    {
+      row_ptr = md_.depth_image_.ptr<uint16_t>(v)+mp_.depth_filter_margin_;
+      mask_ptr = mask.ptr<uchar>(v)+mp_.depth_filter_margin_;
+      for (int u = mp_.depth_filter_margin_; u < cols-mp_.depth_filter_margin_; u += mp_.skip_pixel_)
+      {
+        if (mask_ptr[u] == 0)
+        continue;
+        depth = row_ptr[u]*inv_factor;
+        cur_pt = fisheye_cam_.unprojectPoint(node_, u, v, depth); // unproject to camera frame
+        pt_world = camera_r*cur_pt+md_.camera_pos_;
+        md_.proj_points_[md_.proj_points_cnt++] = pt_world;
+      }
+    }
+  }
 }
 
 void SDFMap::projectDepthImage() {
@@ -754,7 +821,8 @@ void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
   ros::Time t1, t2;
   t1 = ros::Time::now();
 
-  projectDepthImage();
+  // projectDepthImage();
+  projectFisheyeCamDepthImage();
   raycastProcess();
 
   if (md_.local_updated_) clearAndInflateLocalMap();
