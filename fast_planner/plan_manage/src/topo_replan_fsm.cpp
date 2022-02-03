@@ -37,6 +37,8 @@ void TopoReplanFSM::init(ros::NodeHandle& nh) {
   replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 20);
   new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 20);
   bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
+
+  execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
 }
 
 void TopoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
@@ -133,6 +135,11 @@ void TopoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
     if (!trigger_) cout << "no trigger_." << endl;
     fsm_num = 0;
   }
+
+  // publish exec state msg, 0: init, 1: wait_target, 2: gen_new_traj, 3: replan_traj, 4: exec_traj, 5: replan, 6: new
+  ros_unity::FPExecState execState_msg;
+  execState_msg.state = int(exec_state_);
+  execState_pub_.publish(execState_msg);
 
   switch (exec_state_) {
     case INIT: {
