@@ -36,6 +36,7 @@ void TopoReplanFSM::init(ros::NodeHandle& nh) {
 
   replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 20);
   new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 20);
+  new_goal_pub_ = nh.advertise<std_msgs::Empty>("/planning/new_goal", 1);
   bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
 
   execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
@@ -44,6 +45,8 @@ void TopoReplanFSM::init(ros::NodeHandle& nh) {
 void TopoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   if (msg->poses[0].pose.position.z < -0.1) return;
   cout << "Triggered!" << endl;
+
+  new_goal_pub_.publish(std_msgs::Empty());
 
   vector<Eigen::Vector3d> global_wp;
   if (target_type_ == TARGET_TYPE::REFENCE_PATH) {
