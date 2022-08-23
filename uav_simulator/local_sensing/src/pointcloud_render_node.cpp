@@ -86,7 +86,7 @@ void rcvGlobalPointCloudCallBack(
   pcl::PointCloud<pcl::PointXYZ> cloud_input;
   pcl::fromROSMsg(pointcloud_map, cloud_input);
 
-  _voxel_sampler.setLeafSize(0.1f, 0.1f, 0.1f);
+  _voxel_sampler.setLeafSize(0.15f, 0.15f, 0.15f);
   _voxel_sampler.setInputCloud(cloud_input.makeShared());
   _voxel_sampler.filter(_cloud_all_map);
 
@@ -123,14 +123,14 @@ void renderSensedPoints(const ros::TimerEvent& event) {
       pt = _cloud_all_map.points[_pointIdxRadiusSearch[i]];
 
       if ((fabs(pt.z - _odom.pose.pose.position.z) / (sensing_horizon)) >
-          tan(M_PI / 12.0))
+          tan(M_PI / 6.0))
         continue;
 
       Vector3d pt_vec(pt.x - _odom.pose.pose.position.x,
                       pt.y - _odom.pose.pose.position.y,
                       pt.z - _odom.pose.pose.position.z);
 
-      if (pt_vec.dot(yaw_vec) < 0) continue;
+    //   if (pt_vec.dot(yaw_vec) < 0) continue;
 
       _local_map.points.push_back(pt);
     }
@@ -174,10 +174,15 @@ int main(int argc, char** argv) {
   pub_cloud =
       nh.advertise<sensor_msgs::PointCloud2>("/pcl_render_node/cloud", 10);
 
-  double sensing_duration = 1.0 / sensing_rate * 2.5;
+  double sensing_duration = 1.0 / sensing_rate;
 
   local_sensing_timer =
       nh.createTimer(ros::Duration(sensing_duration), renderSensedPoints);
+
+
+  _resolution = 0.1;
+
+  std::cout << "resolution: " << _resolution << std::endl;
 
   _inv_resolution = 1.0 / _resolution;
 
