@@ -19,6 +19,8 @@
 #include <plan_manage/planner_manager.h>
 #include <traj_utils/planning_visualization.h>
 
+#include <ros_unity/FPExecState.h>
+
 using std::vector;
 
 namespace fast_planner {
@@ -76,7 +78,7 @@ private:
   ros::NodeHandle node_;
   ros::Timer exec_timer_, safety_timer_, vis_timer_, test_something_timer_;
   ros::Subscriber waypoint_sub_, odom_sub_;
-  ros::Publisher replan_pub_, new_pub_, bspline_pub_;
+  ros::Publisher replan_pub_, new_pub_, bspline_pub_, execState_pub_, new_goal_pub_;
 
   /* helper functions */
   bool callKinodynamicReplan();        // front-end and back-end method

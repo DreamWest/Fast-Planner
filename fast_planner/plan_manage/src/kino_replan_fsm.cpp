@@ -34,9 +34,11 @@ void KinoReplanFSM::init(ros::NodeHandle& nh) {
       nh.subscribe("/waypoint_generator/waypoints", 1, &KinoReplanFSM::waypointCallback, this);
   odom_sub_ = nh.subscribe("/odom_world", 1, &KinoReplanFSM::odometryCallback, this);
 
-  replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 10);
+  replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 20);
   new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 10);
-  bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 10);
+  bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
+  new_goal_pub_ = nh.advertise<std_msgs::Empty>("/planning/new_goal", 1);
+  execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
 }
 
 void KinoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
@@ -45,8 +47,10 @@ void KinoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   cout << "Triggered!" << endl;
   trigger_ = true;
 
+  new_goal_pub_.publish(std_msgs::Empty());
+
   if (target_type_ == TARGET_TYPE::MANUAL_TARGET) {
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
+    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, msg->poses[0].pose.position.z;
 
   } else if (target_type_ == TARGET_TYPE::PRESET_TARGET) {
     end_pt_(0)  = waypoints_[current_wp_][0];
@@ -104,6 +108,11 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
     if (!trigger_) cout << "wait for goal." << endl;
     fsm_num = 0;
   }
+
+  // publish exec state msg, 0: init, 1: wait_target, 2: gen_new_traj, 3: replan_traj, 4: exec_traj
+  ros_unity::FPExecState execState_msg;
+  execState_msg.state = int(exec_state_);
+  execState_pub_.publish(execState_msg);
 
   switch (exec_state_) {
     case INIT: {
