@@ -103,11 +103,11 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
 
   if (mp_.use_depth_filter_)
   {
-    md_.proj_points_.resize(1440 * 1080 * fisheye_cam_.getScale() / mp_.skip_pixel_ / mp_.skip_pixel_);
+    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale() / mp_.skip_pixel_ / mp_.skip_pixel_);
   }
   else
   {
-    md_.proj_points_.resize(1440 * 1080 * fisheye_cam_.getScale());
+    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale());
   }
   
   md_.proj_points_cnt = 0;
