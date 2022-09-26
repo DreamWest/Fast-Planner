@@ -7,6 +7,7 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Bool.h>
 #include <vector>
 #include <visualization_msgs/Marker.h>
 
@@ -78,7 +79,10 @@ private:
   ros::NodeHandle node_;
   ros::Timer exec_timer_, safety_timer_, vis_timer_, test_something_timer_;
   ros::Subscriber waypoint_sub_, odom_sub_;
-  ros::Publisher replan_pub_, new_pub_, bspline_pub_, execState_pub_, new_goal_pub_;
+  ros::Publisher replan_pub_, new_pub_, bspline_pub_, execState_pub_, new_goal_pub_, search_failure_pub_;
+
+  ros_unity::FPExecState execState_msg;
+  std_msgs::Bool searchFailure_msg;
 
   /* helper functions */
   bool callKinodynamicReplan();        // front-end and back-end method

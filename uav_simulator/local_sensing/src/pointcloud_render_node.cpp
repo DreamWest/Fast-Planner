@@ -123,7 +123,7 @@ void renderSensedPoints(const ros::TimerEvent& event) {
       pt = _cloud_all_map.points[_pointIdxRadiusSearch[i]];
 
       if ((fabs(pt.z - _odom.pose.pose.position.z) / (sensing_horizon)) >
-          tan(M_PI / 6.0))
+          tan(M_PI / 4.0))
         continue;
 
       Vector3d pt_vec(pt.x - _odom.pose.pose.position.x,

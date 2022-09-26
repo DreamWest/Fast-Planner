@@ -39,6 +39,7 @@ void KinoReplanFSM::init(ros::NodeHandle& nh) {
   bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
   new_goal_pub_ = nh.advertise<std_msgs::Empty>("/planning/new_goal", 1);
   execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
+  search_failure_pub_ = nh.advertise<std_msgs::Bool>("/planning/failure", 1);
 }
 
 void KinoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
@@ -110,7 +111,6 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
   }
 
   // publish exec state msg, 0: init, 1: wait_target, 2: gen_new_traj, 3: replan_traj, 4: exec_traj
-  ros_unity::FPExecState execState_msg;
   execState_msg.state = int(exec_state_);
   execState_pub_.publish(execState_msg);
 
@@ -146,10 +146,14 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
 
       bool success = callKinodynamicReplan();
       if (success) {
+        searchFailure_msg.data = true;
+        search_failure_pub_.publish(searchFailure_msg);
         changeFSMExecState(EXEC_TRAJ, "FSM");
       } else {
         // have_target_ = false;
         // changeFSMExecState(WAIT_TARGET, "FSM");
+        searchFailure_msg.data = false;
+        search_failure_pub_.publish(searchFailure_msg);
         changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       }
       break;
@@ -202,8 +206,12 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
 
       bool success = callKinodynamicReplan();
       if (success) {
+        searchFailure_msg.data = true;
+        search_failure_pub_.publish(searchFailure_msg);
         changeFSMExecState(EXEC_TRAJ, "FSM");
       } else {
+        searchFailure_msg.data = false;
+        search_failure_pub_.publish(searchFailure_msg);
         changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       }
       break;
