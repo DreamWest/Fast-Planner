@@ -1,3 +1,28 @@
+/**
+* This file is part of Fast-Planner.
+*
+* Copyright 2019 Boyu Zhou, Aerial Robotics Group, Hong Kong University of Science and Technology, <uav.ust.hk>
+* Developed by Boyu Zhou <bzhouai at connect dot ust dot hk>, <uv dot boyuzhou at gmail dot com>
+* for more information see <https://github.com/HKUST-Aerial-Robotics/Fast-Planner>.
+* If you use this code, please cite the respective publications as
+* listed on the above website.
+*
+* Fast-Planner is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Fast-Planner is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with Fast-Planner. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+
 #include "bspline/non_uniform_bspline.h"
 #include "nav_msgs/Odometry.h"
 #include "plan_manage/Bspline.h"
@@ -6,11 +31,11 @@
 #include "visualization_msgs/Marker.h"
 #include <ros/ros.h>
 
-ros::Publisher cmd_vis_pub, pos_cmd_pub, traj_pub;
+ros::Publisher cmd_vis_pub, pos_cmd_pub, traj_pub, future_pva_cmd_pub, future_pva_cmd_vis_pub;
 
 nav_msgs::Odometry odom;
 
-quadrotor_msgs::PositionCommand cmd;
+quadrotor_msgs::PositionCommand cmd, cmd2;
 // double pos_gain[3] = {5.7, 5.7, 6.2};
 // double vel_gain[3] = {3.4, 3.4, 4.0};
 double pos_gain[3] = { 5.7, 5.7, 6.2 };
@@ -27,6 +52,8 @@ int traj_id_;
 // yaw control
 double last_yaw_;
 double time_forward_;
+
+double Tf;
 
 vector<Eigen::Vector3d> traj_cmd_, traj_real_;
 
@@ -98,6 +125,34 @@ void drawCmd(const Eigen::Vector3d& pos, const Eigen::Vector3d& vec, const int& 
   mk_state.color.a = color(3);
 
   cmd_vis_pub.publish(mk_state);
+}
+
+void drawFutureCmd(const Eigen::Vector3d& pos, const Eigen::Vector3d& vel, const int& id, double size, const Eigen::Vector4d& color)
+{
+  visualization_msgs::Marker mk;
+  mk.header.stamp = ros::Time::now();
+  mk.header.frame_id = "world";
+  // mk.type = visualization_msgs::Marker::ARROW;
+  mk.type = visualization_msgs::Marker::SPHERE;
+  mk.action = visualization_msgs::Marker::ADD;
+  mk.id = id;
+
+  mk.pose.position.x = pos(0);
+  mk.pose.position.y = pos(1);
+  mk.pose.position.z = pos(2);
+  
+  mk.pose.orientation.w = 1;
+
+  mk.scale.x = size;
+  mk.scale.y = size;
+  mk.scale.z = size;
+
+  mk.color.r = color(0);
+  mk.color.g = color(1);
+  mk.color.b = color(2);
+  mk.color.a = color(3);
+
+  future_pva_cmd_vis_pub.publish(mk);
 }
 
 void bsplineCallback(plan_manage::BsplineConstPtr msg) {
@@ -247,17 +302,63 @@ void cmdCallback(const ros::TimerEvent& e) {
   // drawCmd(pos, acc, 1, Eigen::Vector4d(0, 0, 1, 1));
 
   Eigen::Vector3d dir(cos(yaw), sin(yaw), 0.0);
-  drawCmd(pos, 2 * dir, 2, Eigen::Vector4d(1, 1, 0, 0.7));
+  drawCmd(pos, 2 * dir, 2, Eigen::Vector4d(1, 1, 0, 0.5));
   // drawCmd(pos, pos_err, 3, Eigen::Vector4d(1, 1, 0, 0.7));
 
   traj_cmd_.push_back(pos);
   if (traj_cmd_.size() > 10000) traj_cmd_.erase(traj_cmd_.begin(), traj_cmd_.begin() + 1000);
 }
 
+void futureCmdCallback(const ros::TimerEvent& e)
+{
+  if (!receive_traj_) return;
+
+  ros::Time time_now = ros::Time::now();
+  double t_cur = (time_now - start_time_).toSec();
+
+  Eigen::Vector3d pos, vel, acc;
+  double yaw;
+
+  double t_next = t_cur + Tf;
+
+  if (t_next < traj_duration_) {
+    pos = traj_[0].evaluateDeBoorT(t_next);
+    vel = traj_[1].evaluateDeBoorT(t_next);
+    acc = traj_[2].evaluateDeBoorT(t_next);
+    yaw = traj_[3].evaluateDeBoorT(t_next)[0];
+  } else if (t_next >= traj_duration_) {
+    /* hover when finish traj_ */
+    pos = traj_[0].evaluateDeBoorT(traj_duration_);
+    vel.setZero();
+    acc.setZero();
+    yaw = traj_[3].evaluateDeBoorT(traj_duration_)[0];
+  }
+
+  cmd2.header.stamp = ros::Time::now();
+  cmd2.header.frame_id = "wolrd";
+  cmd2.position.x = pos(0);
+  cmd2.position.y = pos(1);
+  cmd2.position.z = pos(2);
+
+  cmd2.velocity.x = vel(0);
+  cmd2.velocity.y = vel(1);
+  cmd2.velocity.z = vel(2);
+
+  cmd2.acceleration.x = acc(0);
+  cmd2.acceleration.y = acc(1);
+  cmd2.acceleration.z = acc(2);
+
+  cmd2.yaw = yaw;
+  future_pva_cmd_pub.publish(cmd2);
+  drawFutureCmd(pos, vel, 3, 0.2, Eigen::Vector4d(0, 0, 0, 1));
+}
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "traj_server");
   ros::NodeHandle node;
   ros::NodeHandle nh("~");
+
+  nh.param("Tf", Tf, 0.2);
 
   ros::Subscriber bspline_sub = node.subscribe("planning/bspline", 10, bsplineCallback);
   ros::Subscriber replan_sub = node.subscribe("planning/replan", 10, replanCallback);
@@ -268,8 +369,12 @@ int main(int argc, char** argv) {
   pos_cmd_pub = node.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
   traj_pub = node.advertise<visualization_msgs::Marker>("planning/travel_traj", 10);
 
+  future_pva_cmd_pub = node.advertise<quadrotor_msgs::PositionCommand>("/future_pva_cmd", 50);
+  future_pva_cmd_vis_pub = node.advertise<visualization_msgs::Marker>("/future_pva_cmd_vis", 10);
+
   ros::Timer cmd_timer = node.createTimer(ros::Duration(0.01), cmdCallback);
   ros::Timer vis_timer = node.createTimer(ros::Duration(0.25), visCallback);
+  ros::Timer future_cmd_timer = node.createTimer(ros::Duration(0.1), futureCmdCallback);
 
   /* control parameter */
   cmd.kx[0] = pos_gain[0];

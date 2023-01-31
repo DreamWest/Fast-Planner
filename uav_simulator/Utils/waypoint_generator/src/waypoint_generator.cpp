@@ -172,6 +172,9 @@ void goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     } else if (waypoint_type == string("manual-lonely-waypoint")) {
         if (msg->pose.position.z > -0.1) {
             // if height > 0, it's a valid goal;
+
+            ROS_WARN("received clicked goal: (%f, %f, %f)", msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+
             geometry_msgs::PoseStamped pt = *msg;
             waypoints.poses.clear();
             waypoints.poses.push_back(pt);
