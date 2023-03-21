@@ -37,7 +37,7 @@
     <param name="sensing/rate"   value="10.0"/>        
   </node>
 
-  <node pkg="so3_quadrotor_simulator" type="quadrotor_simulator_so3" name="quadrotor_simulator_so3" output="screen">
+  <!-- <node pkg="so3_quadrotor_simulator" type="quadrotor_simulator_so3" name="quadrotor_simulator_so3" output="screen">
         <param name="rate/odom" value="200.0"/>
         <param name="simulator/init_state_x" value="$(arg init_x)"/>
         <param name="simulator/init_state_y" value="$(arg init_y)"/>
@@ -70,10 +70,10 @@
         <remap from="~correction" to="/visual_slam/correction"/>   
         <remap from="~force_disturbance" to="force_disturbance"/>        
         <remap from="~moment_disturbance" to="moment_disturbance"/>            
-  </node> 
+  </node>  -->
  
   <node pkg="odom_visualization" name="odom_visualization" type="odom_visualization" output="screen">
-        <remap from="~odom" to="/visual_slam/odom"/>
+        <remap from="~odom" to="$(arg odometry_topic)"/>
         <param name="color/a" value="1.0"/>    
         <param name="color/r" value="0.0"/>        
         <param name="color/g" value="0.0"/>        

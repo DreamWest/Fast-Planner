@@ -1,3 +1,28 @@
+/**
+* This file is part of Fast-Planner.
+*
+* Copyright 2019 Boyu Zhou, Aerial Robotics Group, Hong Kong University of Science and Technology, <uav.ust.hk>
+* Developed by Boyu Zhou <bzhouai at connect dot ust dot hk>, <uv dot boyuzhou at gmail dot com>
+* for more information see <https://github.com/HKUST-Aerial-Robotics/Fast-Planner>.
+* If you use this code, please cite the respective publications as
+* listed on the above website.
+*
+* Fast-Planner is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Fast-Planner is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with Fast-Planner. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+
 
 #include <plan_manage/kino_replan_fsm.h>
 
@@ -34,25 +59,20 @@ void KinoReplanFSM::init(ros::NodeHandle& nh) {
       nh.subscribe("/waypoint_generator/waypoints", 1, &KinoReplanFSM::waypointCallback, this);
   odom_sub_ = nh.subscribe("/odom_world", 1, &KinoReplanFSM::odometryCallback, this);
 
-  replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 20);
+  replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 10);
   new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 10);
-  bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
-  new_goal_pub_ = nh.advertise<std_msgs::Empty>("/planning/new_goal", 1);
-  execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
+  bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 10);
+  exec_state_pub_ = nh.advertise<std_msgs::Int8>("/planning/exec_state", 1);
   search_failure_pub_ = nh.advertise<std_msgs::Bool>("/planning/failure", 1);
 }
 
 void KinoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   if (msg->poses[0].pose.position.z < -0.1) return;
 
-  cout << "Triggered!" << endl;
   trigger_ = true;
-
-  new_goal_pub_.publish(std_msgs::Empty());
 
   if (target_type_ == TARGET_TYPE::MANUAL_TARGET) {
     end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, msg->poses[0].pose.position.z;
-
   } else if (target_type_ == TARGET_TYPE::PRESET_TARGET) {
     end_pt_(0)  = waypoints_[current_wp_][0];
     end_pt_(1)  = waypoints_[current_wp_][1];
@@ -63,7 +83,6 @@ void KinoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   visualization_->drawGoal(end_pt_, 0.3, Eigen::Vector4d(1, 0, 0, 1.0));
   end_vel_.setZero();
   have_target_ = true;
-
   if (exec_state_ == WAIT_TARGET)
     changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
   else if (exec_state_ == EXEC_TRAJ)
@@ -110,16 +129,15 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
     fsm_num = 0;
   }
 
-  // publish exec state msg, 0: init, 1: wait_target, 2: gen_new_traj, 3: replan_traj, 4: exec_traj
-  execState_msg.state = int(exec_state_);
-  execState_pub_.publish(execState_msg);
+  if (fsm_num%10 ==0)
+  {
+    exec_state_msg.data = (int)exec_state_;
+    exec_state_pub_.publish(exec_state_msg);
+  }
 
   switch (exec_state_) {
     case INIT: {
       if (!have_odom_) {
-        return;
-      }
-      if (!trigger_) {
         return;
       }
       changeFSMExecState(WAIT_TARGET, "FSM");
@@ -231,7 +249,7 @@ void KinoReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
 
     if (dist <= 0.3) {
       /* try to find a max distance goal around */
-      bool            new_goal = false;
+      // bool            new_goal = false;
       const double    dr = 0.5, dtheta = 30, dz = 0.3;
       double          new_x, new_y, new_z, max_dist = -1.0;
       Eigen::Vector3d goal;
@@ -340,7 +358,7 @@ bool KinoReplanFSM::callKinodynamicReplan() {
     /* visulization */
     auto plan_data = &planner_manager_->plan_data_;
     visualization_->drawGeometricPath(plan_data->kino_path_, 0.075, Eigen::Vector4d(1, 1, 0, 0.4));
-    visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 1), false, 0.2,
+    visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 0.5), true, 0.2,
                                 Eigen::Vector4d(1, 0, 0, 1));
 
     return true;

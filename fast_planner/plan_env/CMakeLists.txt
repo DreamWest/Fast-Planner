@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(plan_env)
 
+set(CMAKE_CXX_STANDARD 14)
+
 find_package(OpenCV REQUIRED)
-
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -33,8 +33,6 @@ include_directories(
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 
 add_library( plan_env 
     src/sdf_map.cpp 

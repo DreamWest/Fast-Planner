@@ -1,3 +1,28 @@
+/**
+* This file is part of Fast-Planner.
+*
+* Copyright 2019 Boyu Zhou, Aerial Robotics Group, Hong Kong University of Science and Technology, <uav.ust.hk>
+* Developed by Boyu Zhou <bzhouai at connect dot ust dot hk>, <uv dot boyuzhou at gmail dot com>
+* for more information see <https://github.com/HKUST-Aerial-Robotics/Fast-Planner>.
+* If you use this code, please cite the respective publications as
+* listed on the above website.
+*
+* Fast-Planner is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Fast-Planner is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with Fast-Planner. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+
 
 #include <plan_manage/topo_replan_fsm.h>
 
@@ -36,17 +61,12 @@ void TopoReplanFSM::init(ros::NodeHandle& nh) {
 
   replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 20);
   new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 20);
-  new_goal_pub_ = nh.advertise<std_msgs::Empty>("/planning/new_goal", 1);
   bspline_pub_ = nh.advertise<plan_manage::Bspline>("/planning/bspline", 20);
-
-  execState_pub_ = nh.advertise<ros_unity::FPExecState>("/planning/exec_state", 1);
 }
 
 void TopoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   if (msg->poses[0].pose.position.z < -0.1) return;
   cout << "Triggered!" << endl;
-
-  new_goal_pub_.publish(std_msgs::Empty());
 
   vector<Eigen::Vector3d> global_wp;
   if (target_type_ == TARGET_TYPE::REFENCE_PATH) {
@@ -62,7 +82,7 @@ void TopoReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET) {
       target_point_(0) = msg->poses[0].pose.position.x;
       target_point_(1) = msg->poses[0].pose.position.y;
-      target_point_(2) = msg->poses[0].pose.position.z;//1.0;
+      target_point_(2) = 1.0;
       std::cout << "manual: " << target_point_.transpose() << std::endl;
 
     } else if (target_type_ == TARGET_TYPE::PRESET_TARGET) {
@@ -138,11 +158,6 @@ void TopoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
     if (!trigger_) cout << "no trigger_." << endl;
     fsm_num = 0;
   }
-
-  // publish exec state msg, 0: init, 1: wait_target, 2: gen_new_traj, 3: replan_traj, 4: exec_traj, 5: replan, 6: new
-  ros_unity::FPExecState execState_msg;
-  execState_msg.state = int(exec_state_);
-  execState_pub_.publish(execState_msg);
 
   switch (exec_state_) {
     case INIT: {

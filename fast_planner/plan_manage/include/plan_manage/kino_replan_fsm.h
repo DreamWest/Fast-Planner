@@ -19,6 +19,7 @@
 #include <plan_manage/Bspline.h>
 #include <plan_manage/planner_manager.h>
 #include <traj_utils/planning_visualization.h>
+#include <std_msgs/Int8.h>
 
 #include <ros_unity/FPExecState.h>
 
@@ -51,7 +52,7 @@ class KinoReplanFSM {
 
 private:
   /* ---------- flag ---------- */
-  enum FSM_EXEC_STATE { INIT, WAIT_TARGET, GEN_NEW_TRAJ, REPLAN_TRAJ, EXEC_TRAJ, REPLAN_NEW };
+  enum FSM_EXEC_STATE { INIT, WAIT_TARGET, GEN_NEW_TRAJ, REPLAN_TRAJ, EXEC_TRAJ };
   enum TARGET_TYPE { MANUAL_TARGET = 1, PRESET_TARGET = 2, REFENCE_PATH = 3 };
 
   /* planning utils */
@@ -67,6 +68,7 @@ private:
   /* planning data */
   bool trigger_, have_target_, have_odom_;
   FSM_EXEC_STATE exec_state_;
+  std_msgs::Int8 exec_state_msg;
 
   Eigen::Vector3d odom_pos_, odom_vel_;  // odometry state
   Eigen::Quaterniond odom_orient_;
@@ -79,9 +81,8 @@ private:
   ros::NodeHandle node_;
   ros::Timer exec_timer_, safety_timer_, vis_timer_, test_something_timer_;
   ros::Subscriber waypoint_sub_, odom_sub_;
-  ros::Publisher replan_pub_, new_pub_, bspline_pub_, execState_pub_, new_goal_pub_, search_failure_pub_;
+  ros::Publisher replan_pub_, new_pub_, bspline_pub_, execState_pub_, new_goal_pub_, search_failure_pub_, wait_target_pub_, exec_state_pub_;
 
-  ros_unity::FPExecState execState_msg;
   std_msgs::Bool searchFailure_msg;
 
   /* helper functions */

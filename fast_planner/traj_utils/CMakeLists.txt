@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(traj_utils)
 
+set(CMAKE_CXX_STANDARD 14)
+
 find_package(catkin REQUIRED COMPONENTS
   bspline
   bspline_opt
@@ -30,8 +32,6 @@ include_directories(
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 
 add_library( traj_utils
     src/planning_visualization.cpp 
