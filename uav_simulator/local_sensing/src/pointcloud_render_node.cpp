@@ -79,7 +79,7 @@ vector<float> _pointRadiusSquaredDistance;
 
 void rcvGlobalPointCloudCallBack(
     const sensor_msgs::PointCloud2& pointcloud_map) {
-  if (has_global_map) return;
+  // if (has_global_map) return;
 
   ROS_WARN("Global Pointcloud received..");
 
