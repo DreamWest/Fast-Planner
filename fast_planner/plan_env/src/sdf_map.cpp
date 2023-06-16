@@ -101,13 +101,13 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
   md_.tmp_buffer2_ = vector<double>(buffer_size, 0);
   md_.raycast_num_ = 0;
 
-  if (mp_.use_depth_filter_)
+  if (mp_.use_depth_filter_) // TODO: to check if resolution is correct
   {
-    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale() / mp_.skip_pixel_ / mp_.skip_pixel_);
+    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale() * fisheye_cam_.getScale() / mp_.skip_pixel_ / mp_.skip_pixel_);
   }
   else
   {
-    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale());
+    md_.proj_points_.resize(720 * 540 * fisheye_cam_.getScale() * fisheye_cam_.getScale());
   }
   
   md_.proj_points_cnt = 0;
